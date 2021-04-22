@@ -19,7 +19,7 @@ class MMSBM_SGMCMC:
                  node_neighbors_dict, val_set_index,
                  mu=1, max_iter=10000):
 
-        """ follows the notations in the original paper
+        """ follows the notations in the original paper Scalable MCMC for Mixed Membership Stochastic Blockmodels (2015)
         :param flags: hyper-parameters for GCN and MMSBM
         :param n: node number
         :param k: class number
@@ -94,6 +94,7 @@ class MMSBM_SGMCMC:
         self.dir = 'figures/'
 
     def Z_constant_mini_batch_phi(self, node_a_membership, node_b_membership, link_index_mini_batch):
+        """Given just below eq 13"""
         bernuli_delta_mini_batch = np.ones((len(node_a_membership), 1)) * (1 - self.delta)
         bernuli_delta_mini_batch[link_index_mini_batch] = self.delta
         Z_constant_mini_batch = bernuli_delta_mini_batch.copy()
@@ -106,6 +107,7 @@ class MMSBM_SGMCMC:
         return Z_constant_mini_batch
 
     def Z_constant_mini_batch(self, node_a_membership, node_b_membership, links_flag):
+        """Eq 8"""
         if links_flag:
             bernuli_delta_mini_batch = np.ones((len(node_a_membership), 1)) * self.delta
         else:
@@ -122,10 +124,12 @@ class MMSBM_SGMCMC:
         return Z_constant_mini_batch
 
     def function_f_ab_k_k(self, node_a_membership, node_b_membership, observation_ab, k):
+        """Eq 7"""
         f_ab_k_k = bernuli_distrbution(observation_ab, self.beta[k]) * node_a_membership[k] * node_b_membership[k]
         return f_ab_k_k
 
     def function_f_ab_k_mini_batch_pi(self, k, node_a_membership, node_b_membership, links_index):
+        """Eq 13"""
         bernuli_delta_mini_batch = np.ones((len(node_a_membership), 1)) * (1 - self.delta)
         bernuli_delta_mini_batch[links_index] = self.delta
 
@@ -141,6 +145,7 @@ class MMSBM_SGMCMC:
         return f_ab_k_mini_batch
 
     def function_f_ab_k_k_mini_batch(self, k, node_a_membership, node_b_membership, link_flag):
+        """Eq 7"""
         if link_flag:
             f_ab_k_k_mini_batch = np.ones((len(node_a_membership), 1)) * self.beta[k]
         else:
@@ -157,7 +162,7 @@ class MMSBM_SGMCMC:
         node_a = np.zeros(n * n).astype(int)
         node_b = np.zeros(n * n).astype(int)
         y_mini_batch = np.zeros(n * n).astype(int)
-        corrections = np.zeros(n * n)
+        corrections = np.zeros(n * n) # What are these?
         for i, node in enumerate(batch_nodes_index):
             # deal with links
             node_neighbors = self.node_neighbors_dict[node]
@@ -183,10 +188,10 @@ class MMSBM_SGMCMC:
         phi_a = self.phi[node_a]
 
         links_index = np.where(y_mini_batch == 1)[0]
-        Z_ab_mini_batch = self.Z_constant_mini_batch_phi(pi_a, pi_b, links_index)
+        Z_ab_mini_batch = self.Z_constant_mini_batch_phi(pi_a, pi_b, links_index) # Under eq 13
 
         for k in range(self.k):
-            f_ab_k_mini_batch = self.function_f_ab_k_mini_batch_pi(k, pi_a, pi_b, links_index)
+            f_ab_k_mini_batch = self.function_f_ab_k_mini_batch_pi(k, pi_a, pi_b, links_index) # Eq 13
             phi_a_k = (phi_a[:, k]).reshape(n * n, 1)
 
             temp_denumerator = Z_ab_mini_batch * phi_a_k
@@ -195,13 +200,13 @@ class MMSBM_SGMCMC:
             index_zero = np.where(temp_denumerator == 0)[0]
             denumerator[index_zero] = 10 ** (-25)
 
-            temp = f_ab_k_mini_batch / denumerator - np.ones((n * n, 1)) / ((np.sum(phi_a,
-                                                                                    axis=1)).reshape(
-                n * n, 1))
+            # Eq 14
+            temp = f_ab_k_mini_batch / denumerator - np.ones((n * n, 1)) / ((np.sum(phi_a, axis=1)).reshape(n * n, 1))
 
             temp = temp.reshape(n, n) * corrections
             grad_phi[:, k] = np.sum(temp, axis=1)
 
+        # Almost like eq 15. But where is alpha, what is gamma_scale, etc.?
         temp_phi = np.abs(self.phi[batch_nodes_index] + step_size / 2 * (
         - self.phi[batch_nodes_index] * self.gamma_scale + grad_phi * self.phi[batch_nodes_index]))
         return temp_phi
@@ -215,21 +220,23 @@ class MMSBM_SGMCMC:
 
         pi_a_non_links = self.pi[non_edges_index_a]
         pi_b_non_links = self.pi[non_edges_index_b]
-        z_ab_non_links = self.Z_constant_mini_batch(pi_a_non_links, pi_b_non_links, links_flag=False)
+        z_ab_non_links = self.Z_constant_mini_batch(pi_a_non_links, pi_b_non_links, links_flag=False) # Eq 8
 
         edges_index_a = self.edges[0]
         edges_index_b = self.edges[1]
         pi_a_links = self.pi[edges_index_a]
         pi_b_links = self.pi[edges_index_b]
-        z_ab_links = self.Z_constant_mini_batch(pi_a_links, pi_b_links, links_flag=True)
+        z_ab_links = self.Z_constant_mini_batch(pi_a_links, pi_b_links, links_flag=True) # Eq 8
 
         correction = float(self.nonedges_n) / len(non_edges_index_a)
 
         for k in range(self.k):
+            # Eq 7
             f_ab_kk_mini_batch_links = self.function_f_ab_k_k_mini_batch(k, pi_a_links, pi_b_links, link_flag=True)
 
             links_term = f_ab_kk_mini_batch_links / z_ab_links
 
+            # Eq 7
             f_ab_kk_mini_batch_non_links = self.function_f_ab_k_k_mini_batch(k, pi_a_non_links, pi_b_non_links,
                                                                              link_flag=False)
             non_links_term = (f_ab_kk_mini_batch_non_links / z_ab_non_links) * correction
@@ -243,25 +250,27 @@ class MMSBM_SGMCMC:
                 self.theta[k][1] = 10 ** (-50)
 
             # print(self.theta[k][0], self.theta[k][1], theta_k)
+            # Eq 9
             grad_theta[k][0] = np.sum(links_term * (-1.0 / theta_k)) \
                                + np.sum(non_links_term * (1.0 / self.theta[k][0] - 1.0 / theta_k))
 
             grad_theta[k][1] = np.sum(links_term * (1.0 / self.theta[k][1] - 1.0 / theta_k)) \
                                + np.sum(non_links_term * (-1.0 / theta_k))
 
+        # Almost like eq 10 but a bit different
         temp_theta = np.abs(
             self.theta + (step_size / 2) * (-self.theta * self.gamma_scale + grad_theta * self.theta))
         return temp_theta
 
     def train_one_epoch(self, step_size, n_list_set):
-        batch_nodes_index = np.random.choice(self.n, size=self.mini_batch_nodes, replace=False)
+        batch_nodes_index = np.random.choice(self.n, size=self.mini_batch_nodes, replace=False) # Sample a mini-batch
         temp_phi = self.update_phi(batch_nodes_index, step_size, n_list_set)
 
         self.phi[batch_nodes_index] = temp_phi
-        self.pi, self.phi_constant = reparameterized_to_pi(self.phi, self.n)
+        self.pi, self.phi_constant = reparameterized_to_pi(self.phi, self.n) # Obtain pi from phi
 
         temp_theta = self.update_theta(step_size)
-        self.beta, self.theta_constant = reparameterized_to_beta(temp_theta)
+        self.beta, self.theta_constant = reparameterized_to_beta(temp_theta) # Obtain beta from theta
         self.theta = temp_theta
 
         return

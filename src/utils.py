@@ -119,6 +119,7 @@ def vectorized_multinomial(prob_matrix, items):
     return items[k]
 
 def reparameterized_to_beta(theta):  # comunity strength
+    """Start of section 4.1"""
     theta_constant = np.sum(theta, axis = 1)
     beta = theta[:,1]/theta_constant
     return beta, theta_constant
@@ -134,6 +135,7 @@ def initialize_theta_phi_with_better_initialization(beta, pi, theta_constant, ph
 
 
 def reparameterized_to_pi(phi, N):  #
+    """Start of section 4.2"""
     row_sum_phi = (np.sum(phi, axis = 1)).reshape(N, 1)
     pi = phi/row_sum_phi
     return pi, row_sum_phi
