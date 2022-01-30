@@ -1,0 +1,3 @@
+.venv
+start-venv.sh
+src/__pycache__
