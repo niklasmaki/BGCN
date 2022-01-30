@@ -22,7 +22,7 @@ FLAGS = flags()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='citeseer', help='which dataset to use')
+    parser.add_argument('--dataset', type=str, default='cora', help='which dataset to use')
     parser.add_argument('--label_n_per_class', type=int, default=10, help='trial index')
     parser.add_argument('--data_partition_seed', type=int, default=101,
                         help='The seed to use split the data for trial.')
