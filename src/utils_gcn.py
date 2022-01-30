@@ -80,6 +80,46 @@ def load_data(dataset_str, dataset_dir):
     y_test[test_mask, :] = labels[test_mask, :]
     return adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, labels
 
+def load_npz_data(dataset_str, dataset_dir):
+    with np.load(dataset_dir + "/{}.npz".format(dataset_str)) as loader:
+        loader = dict(loader)
+        adj_matrix = sp.csr_matrix(
+            (loader["adj_data"], loader["adj_indices"], loader["adj_indptr"]), shape=loader["adj_shape"]
+        )
+
+        if "attr_data" in loader:
+            # Attributes are stored as a sparse CSR matrix
+            attr_matrix = sp.csr_matrix(
+                (loader["attr_data"], loader["attr_indices"], loader["attr_indptr"]), shape=loader["attr_shape"]
+            )
+        elif "attr_matrix" in loader:
+            # Attributes are stored as a (dense) np.ndarray
+            attr_matrix = loader["attr_matrix"]
+        else:
+            attr_matrix = None
+
+        if "labels_data" in loader:
+            # Labels are stored as a CSR matrix
+            labels = sp.csr_matrix(
+                (loader["labels_data"], loader["labels_indices"], loader["labels_indptr"]), shape=loader["labels_shape"]
+            )
+        elif "labels" in loader:
+            # Labels are stored as a numpy array
+            labels = loader["labels"]
+        else:
+            labels = None
+
+        node_names = loader.get("node_names")
+        attr_names = loader.get("attr_names")
+        class_names = loader.get("class_names")
+        metadata = loader.get("metadata")
+
+        adj = nx.adjacency_matrix(nx.from_scipy_sparse_matrix(adj_matrix))
+        features = attr_matrix.tolil()
+        one_hot_labels = np.identity(np.max(labels) + 1)[labels].astype(int)
+        return adj, features, one_hot_labels
+    
+
 def sparse_to_tuple(sparse_mx):
     """Convert sparse matrix to tuple representation."""
     def to_tuple(mx):

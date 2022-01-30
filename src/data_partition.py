@@ -8,17 +8,21 @@
     MIT License for more details.
     '''
 import numpy as np
-from src.utils_gcn import load_data
+from src.utils_gcn import load_data, load_npz_data
 
 
 def data_partition_random(dataset_dir, dataset_name, label_n_per_class):
     # Random data partition
     text_set_n = 1000
     val_set_n = 500
-    adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, one_hot_labels = load_data(dataset_name, dataset_dir)
 
-    n = len(y_train)
-    k = len(y_train[0])
+    if dataset_name in ["cora", "citeseer", "pubmed"]:
+        adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, one_hot_labels = load_data(dataset_name, dataset_dir)
+    else:
+        adj, features, one_hot_labels = load_npz_data(dataset_name, dataset_dir)
+
+    n = features.shape[0]
+    k = len(one_hot_labels[0])
 
     labels = one_hot_labels.argmax(axis=1)
 
