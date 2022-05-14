@@ -81,7 +81,7 @@ def load_data(dataset_str, dataset_dir):
     return adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, labels
 
 def load_npz_data(dataset_str, dataset_dir):
-    with np.load(dataset_dir + "/{}.npz".format(dataset_str)) as loader:
+    with np.load(dataset_dir + "/{}.npz".format(dataset_str), allow_pickle=True) as loader:
         loader = dict(loader)
         adj_matrix = sp.csr_matrix(
             (loader["adj_data"], loader["adj_indices"], loader["adj_indptr"]), shape=loader["adj_shape"]
